@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>色深度減色webツール</title>
+<meta name="viewport" content="width=device-width">
+<link href="main.css" rel="stylesheet">
+</head>
+<body>
+<h1>色深度減色webツール</h1>
+<div class="upload"><input type="file" name="file" id="file" accept='image/*'>
+<span id="orgfilename"></span>
+<span id="orgfileinfo"></span>
+<span id="orgfiletype"></span>
+</div>
+<div id="divDrop">ここにドロップ(単独ファイル)</div>
+
+<select id="colorbit">
+<option value="111">3bit(1bit)</option>
+<option value="222">6bit(2bit)</option>
+<option value="333">9bit(3bit)</option>
+<option value="444">12bit(4bit)</option>
+<option value="555">15bit(5bit)</option>
+<option value="565">16bit(RGB565)</option>
+<option value="666">18bit(6bit)</option>
+<option value="676" selected>19bit(RGB676)*</option>
+<option value="777">21bit(7bit)</option>
+<option value="888">24bit(8bit/減色なし)</option>
+<option value="999">オプション表示</option>
+<option value="998">オプション色数指定</option>
+</select><br>
+<span id="optionbit" style="display: none">
+<select id="colorbitr">
+<option value="1">R 1bit</option>
+<option value="2">R 2bit</option>
+<option value="3">R 3bit</option>
+<option value="4">R 4bit</option>
+<option value="5">R 5bit</option>
+<option value="6" selected>R 6bit</option>
+<option value="7">R 7bit</option>
+<option value="8">R 8bit</option>
+</select> <select id="colorbitg">
+<option value="1">G 1bit</option>
+<option value="2">G 2bit</option>
+<option value="3">G 3bit</option>
+<option value="4">G 4bit</option>
+<option value="5">G 5bit</option>
+<option value="6" >G 6bit</option>
+<option value="7" selected>G 7bit</option>
+<option value="8">G 8bit</option>
+</select> <select id="colorbitb">
+<option value="1" selected>B 1bit</option>
+<option value="2">B 2bit</option>
+<option value="3">B 3bit</option>
+<option value="4">B 4bit</option>
+<option value="5">B 5bit</option>
+<option value="6" selected>B 6bit</option>
+<option value="7">B 7bit</option>
+<option value="8">B 8bit</option>
+</select></span><span id="optioncount" style="display: none">
+ R<input type="number" id="countr" min="2" max="255" step="1" size="6" value="64">
+ G<input type="number" id="countg" min="2" max="255" step="1" size="6" value="128">
+ B<input type="number" id="countb" min="2" max="255" step="1" size="6" value="64">
+</span><span id="optionetc">　<select id="mode">
+<option value="1" selected>最近傍法</option>
+<option value="2" id="mode2">切り捨て(0埋め)</option>
+<option value="3" id="mode3">切り上げ(1埋め)</option>
+<option value="4">均等化</option>
+<option value="5">切り下げ</option>
+</select>　<br>
+出力 <select id="outtype">
+<option value="png" selected>PNG</option>
+<option value="jpeg" >JPEG</option>
+<option value="webp" id="typewebp">WebP</option>
+<option value="bmp" id="typebmp">BMP</option>
+<option value="auto">入力に従う</option>
+</select>　品質
+<select id="outquality">
+<option value="0.92" selected>0.92</option>
+<option value="1.0">1.0</option>
+<option value="0.8">0.8</option>
+<option value="0.7">0.7</option>
+<option value="0.6">0.6</option>
+<option value="0.5">0.5</option>
+</select>　ファイル名付属 <input type="text" id="suffixName" value="_fix" size="10" maxlength="30">
+<input type="checkbox" id="suffixDate" value="1"><label for="suffixDate">現在日時</label><br>
+プレビュー方式 <select id="previewmode">
+<option value="updown" selected>上下</option>
+<option value="side">左右</option>
+</select>
+</span>
+<div>
+<button id="execEffect" disabled>　実　　行　</button><br>
+<button id="buttonDownLink" disabled>ダウンロード</button><span id="saveFileName"></span>　<span id="saveMode"></span>
+</div>
+<hr>
+<div>
+<button id="buttonbig1" disabled>拡大縮小(処理対象)</button>
+　<button id="buttonbig2" disabled>拡大縮小(元画像)</button><br>
+<canvas id="canvas1" width="100" height="10"></canvas><span id="previewbr"></span>
+<canvas id="canvas2" width="100" height="10"></canvas>
+</div>
+<hr>
+※ノート<br>
+<p>PNG、BMP、WebPなど24bitフルカラー画像を16bitなどのビット深度(量子化、ポスタリゼーション)で単純に減色します。<br>
+PNGフルカラー形式のファイルサイズ削減に若干有効です。<br>
+ファイルサイズ最小化には、<a href="https://squoosh.app/" target="_blank" rel="noopener">Squoosh</a>やoptiPNG、oxipng、WebP(ロスレス)と併用してください。<br>
+<br>
+ファイルはアップロードされずブラウザのJavaScriptで処理されます。<br>
+PNGの場合で劣化が分かりにくい範囲では、RGB676(デフォルト)ぐらいがおすすめです。<br>
+JPEG/WebPの場合は逆にビット数を落とすとファイルサイズが増えるようですので、このツールの使用は非推奨です。<br>
+保存形式そのものはブラウザの実装に依存しており減色してもフルカラーで保存します。<br>
+PNG形式の保存では品質は無視されます。<br>
+256色パレットモードはサポートしていません。ディザ処理及びPNG8モードは、他のツールをご使用ください。<br>
+FirefoxではwebP形式で保存できません。形式が不明な場合はPNGになります。<br>
+IEには対応していません。
+</p>
+<hr>
+　ver 0.1 2020-11-29<br>
+　(c) 2020 syuribox
+<script src="main.js" charset="utf-8"></script>
+</body>
+</html>

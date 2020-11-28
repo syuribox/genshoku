@@ -114,12 +114,19 @@ function setUrlParameter() {
 }
 
 
+function dropHidden(){
+	if (navigator.userAgent.match(/iPhone|Android.+Mobile/)){
+		divDrop.style.display = 'none';
+	}
+}
+
 function handleDrop(e) {
 	e.stopPropagation();
 	e.preventDefault();
 
 	const files = e.dataTransfer.files;
 	loadFile(files[0]);
+	document.getElementById('orgfilename').innerText = files[0].name;
 }
 
 function handleDragOver(e) {
@@ -177,6 +184,7 @@ function loadFile(fileData) {
 	buttonExecEffect.disabled = true;
 	buttonbig1.disabled = true;
 	buttonbig2.disabled = true;
+	document.getElementById('orgfilename').innerText = '';
 	document.getElementById('saveFileName').innerText = '(無効)';
 	if (!fileData.type.match('^image/.*')) {
 		alert('画像を選択してください');
@@ -204,7 +212,31 @@ function loadFile(fileData) {
 		}
 		let strType = '';
 		if (data.substr(0,8) == '\x89PNG\x0d\x0a\x1a\x0a') {
-			strType = 'PNG';
+			strType = 'PNG(';
+			const depth = data.charCodeAt(24);
+			const color = data.charCodeAt(25);
+			let rgba = 0;
+			if (color == 0){
+				strType += 'グレー';
+			}else if (color == 2){
+				strType += 'カラー';
+				rgba = 3;
+			}else if (color == 3){
+				strType += 'インデックス';
+			}else if (color == 4){
+				strType += 'グレーアルファ';
+				rgba = 2;
+			}else if (color == 6){
+				strType += 'カラーアルファ';
+				rgba = 4;
+			}else {
+				strType += '不明';
+			}
+			if (rgba) {
+				strType += depth + 'bit[' + (depth * rgba) + 'bit])';
+			}else{
+				strType += depth + 'bit)';
+			}
 		}else if (data.substr(0,4) == '\xff\xd8\xff\xe0' && data.substr(6,5) == 'JFIF\x00') {
 			strType = 'JPEG(JFIF)';
 		}else if (data.substr(0,4) == 'RIFF') {
@@ -231,12 +263,24 @@ function loadFile(fileData) {
 		}else if (data.substr(0,2) == 'BM' && data.substr(6,4) == '\x00\x00\x00\x00') {
 			strType = 'BMP(';
 			let bitCount = '';
-			if (data.substr(14,4) == '\x28\x00\x00\x00') {
-				strType += 'Win';
+			const bytes = data.substr(14,4);
+			const b = bytes.charCodeAt(0);
+			if (bytes == '\x28\x00\x00\x00') {
+				strType += 'Win/';
 				bitCount = data.substr(28, 2);
-			} else if (data.substr(14,4) == '\x0c\x00\x00\x00') {
-				strType += '0S2';
+			} else if (bytes == '\x0c\x00\x00\x00') {
+				strType += '0S2/';
 				bitCount = data.substr(24, 2);
+			} else if (bytes.substr(1, 3) == '\x00\x00\x00'){ 
+				if (b == 52 || b == 56 || b == 60 || b == 96 || b == 108){
+					bitCount = data.substr(28, 2);
+					strType += 'V4/';
+				} else if(b == 112 || b == 120 || b == 124) {
+					bitCount = data.substr(28, 2);
+					strType += 'V5/';
+				}else{
+					strType += '不明';
+				}
 			}
 			if(bitCount == '\x18\x00') {
 				strType += '24bit';
@@ -248,6 +292,16 @@ function loadFile(fileData) {
 				strType += '4bit';
 			}else if (bitCount == '\x01\x00') {
 				strType += '1bit';
+			}else if (bitCount == '\x00\x00') {
+				if (data.substr(30,4) == '\x04\x00\x00\x00'){
+					strType += 'JPEG';
+				}else if (data.substr(30,4) == '\x05\x00\x00\x00'){
+					strType += 'PNG';
+				}else{
+					strType += '0bit';
+				}
+			}else if(bitCount == ''){
+				// strType += 'bit数不明';
 			}else{
 				strType += '[' + (bitCount.charCodeAt(0) + bitCount.charCodeAt(1) * 256) + ']bit';
 			}
@@ -316,7 +370,9 @@ function canvasDraw() {
 		}
 		fileNameDownLink = replaceFileName(fileNameOrg);
 		const strSize = getStringFileSize(outImage.length * 3 / 4);
-		document.getElementById('saveFileName').innerText = fileNameDownLink + ' (' + strSize + ')';
+		document.getElementById('saveFileName').innerText = fileNameDownLink;
+		document.getElementById('saveFileSize').innerText = '(' + strSize + ')';
+		document.getElementById('imagesize').innerText = canvas3.width + ' x ' + canvas3.height;
 	}
 }
 
@@ -659,6 +715,7 @@ function removeUnsupportType() {
 }
 
 urlParameter();
+dropHidden();
 
 file.addEventListener('change', loadLocalImage, false);
 divDrop.addEventListener('drop', handleDrop, false);

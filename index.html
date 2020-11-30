@@ -74,6 +74,7 @@
 <option value="jpeg" >JPEG</option>
 <option value="webp" id="typewebp">WebP</option>
 <option value="bmp" id="typebmp">BMP</option>
+<option value="avif" id="typeavif">AVIF</option>
 <option value="auto">入力に従う</option>
 </select>　品質
 <select id="outquality">
@@ -93,8 +94,8 @@
 <div>
 <button id="execEffect" disabled>　実　　行　</button><br>
 <button id="buttonDownLink" disabled>ダウンロード</button><span id="saveFileName"></span><br>
-<span id="saveFileSize"></span> <span id="saveMode"></span><br>
-<span id="imagesize"> </span>
+<span id="saveFileSize">　</span> <span id="saveMode"></span><br>
+<span id="imagesize">　</span>
 </div>
 </div>
 <hr>
@@ -117,10 +118,10 @@ JPEG/WebP(不可逆圧縮/VP8)の場合は逆にビット数を落とすとフ�
 保存形式そのものはブラウザの実装に依存しており減色してもPNGの場合32bitカラーアルファで保存されます。<br>
 PNG形式の保存では品質は無視されます。<br>
 256色パレットモードはサポートしていません。ディザ処理及びPNG8モードは、他のツールをご使用ください。<br>
-FirefoxではwebP形式で保存できません。形式が不明な場合はPNGになります。<br>
+FirefoxではWebP形式で保存できません。形式が不明な場合はPNGになります。<br>
 </p>
 <hr>
-　ver 0.1.1 2020-11-29<br>
+　ver 0.1.2 2020-11-30<br>
 　(c) 2020 syuribox
 <script src="main.js" charset="utf-8"></script>
 </body>

@@ -29,6 +29,7 @@ function urlParameter() {
 	let params = new URLSearchParams(document.location.search.substring(1));
 	const bit = params.get('bit') - 0;
 	const type = params.get('type');
+	const quo = params.get('quo');
 	const view = params.get('view');
 	if ((111 <= bit && bit <= 888) || bit == 999 || bit == 998){
 		document.getElementById('colorbit').value = bit;
@@ -54,6 +55,11 @@ function urlParameter() {
 	}
 	if (type == 'png' || type == 'jpeg' || type == 'webp' || type == 'bmp' || type == 'auto') {
 		document.getElementById('outtype').value = type;
+		if (type == 'jpeg' || type == 'webp' || type == 'auto') {
+			if (quo == '0.92' || quo == '1.0' || quo == '0.8' || quo == '0.7' || quo == '0.6' || quo == '0.5') {
+				document.getElementById('outquality').value = quo;
+			}
+		}
 	}
 	if (view == 'updown' || view == 'side') {
 		document.getElementById('previewmode').value = view;
@@ -81,8 +87,13 @@ function urlParameter() {
 function setUrlParameter() {
 	const bit = document.getElementById('colorbit').value;
 	const type = document.getElementById('outtype').value;
+	let keysquo = '';
+	if (type == 'jpeg' || type == 'webp' || type == 'auto') {
+		const quo = document.getElementById('outquality').value;
+		keysquo = '&quo=' + quo;
+	}
 	const view = document.getElementById('previewmode').value;
-	const keys = 'bit=' + bit + '&type='+ type + '&view=' + view;
+	const keys = 'bit=' + bit + '&type='+ type + keysquo + '&view=' + view;
 	let keybit = '';
 	let keycount = '';
 	if (bit == 999) {
@@ -179,141 +190,227 @@ function loadLocalImage(e) {
 	loadFile(fileData);
 }
 
+function charHex(str, index) {
+	return ('0' + str.charCodeAt(index).toString(16)).slice(-2);
+}
+
 function loadFile(fileData) {
 	buttonDownLink.disabled = true;
 	buttonExecEffect.disabled = true;
 	buttonbig1.disabled = true;
 	buttonbig2.disabled = true;
+	uploadImgSrc = '';
+	fileNameOrg = '';
 	document.getElementById('orgfilename').innerText = '';
 	document.getElementById('saveFileName').innerText = '(無効)';
+	const org = document.getElementById('orgfileinfo');
+	org.innerText = getStringFileSize(fileData.size);
 	if (!fileData.type.match('^image/.*')) {
 		alert('画像を選択してください');
+		loadError();
 		return;
 	}
 	if (50 * 1024 * 1024 < fileData.size) {
 		alert('画像のサイズは50MBまでです');
+		loadError();
 		return;
 	}
-	const org = document.getElementById('orgfileinfo');
-	org.innerText = getStringFileSize(fileData.size);
+	if(fileData.size == 0){
+		loadError('空のファイルです');
+		return;
+	}
 
 	const reader = new FileReader();
 	reader.onload = function () {
+		const org = document.getElementById('orgfiletype');
+		const index = reader.result.indexOf(';base64,');
+		if (index == -1) {
+			org.innerText = '　';
+			loadError();
+			return;
+		}
 		uploadImgSrc = reader.result;
 		fileNameOrg = fileData.name;
-		const org = document.getElementById('orgfiletype');
-		const index = uploadImgSrc.indexOf(';base64,');
-		const header = uploadImgSrc.substr(0,100+index);
-		const mime = header.substr(11, index - 11);
-		const data = atob(header.substr(index + 8));
-		let text = '';
-		for(let i = 0; i < 15 && i < data.length; i++){
-			text += ('0' + data.charCodeAt(i).toString(16)).slice(-2);
-		}
-		let strType = '';
-		if (data.substr(0,8) == '\x89PNG\x0d\x0a\x1a\x0a') {
-			strType = 'PNG(';
-			const depth = data.charCodeAt(24);
-			const color = data.charCodeAt(25);
-			let rgba = 0;
-			if (color == 0){
-				strType += 'グレー';
-			}else if (color == 2){
-				strType += 'カラー';
-				rgba = 3;
-			}else if (color == 3){
-				strType += 'インデックス';
-			}else if (color == 4){
-				strType += 'グレーアルファ';
-				rgba = 2;
-			}else if (color == 6){
-				strType += 'カラーアルファ';
-				rgba = 4;
-			}else {
-				strType += '不明';
-			}
-			if (rgba) {
-				strType += depth + 'bit[' + (depth * rgba) + 'bit])';
-			}else{
-				strType += depth + 'bit)';
-			}
-		}else if (data.substr(0,4) == '\xff\xd8\xff\xe0' && data.substr(6,5) == 'JFIF\x00') {
-			strType = 'JPEG(JFIF)';
-		}else if (data.substr(0,4) == 'RIFF') {
-			const format = data.substr(8,4);
-			const fourCC = data.substr(12,4);
-			if (format == 'WEBP'){
-				strType = 'WebP';
-				if (fourCC == 'VP8X') {
-					strType += '(VP8X)';
-				}else if (fourCC == 'VP8L') {
-					strType += '(ロスレス)';
-				}else if (fourCC == 'VP8 ') {
-					strType += '(不可逆圧縮)';
-				}else if (fourCC == 'ALPH') {
-					strType += '(アルファチャネル)';
-				}else{
-					strType += '(不明FourCC[' + fourCC + '])';
-				}
-			}else{
-				strType = '不明RIFF[' + format + '/' + fourCC + ']';
-			}
-		}else if (data.substr(0,3) == 'GIF') {
-			strType = 'GIF';
-		}else if (data.substr(0,2) == 'BM' && data.substr(6,4) == '\x00\x00\x00\x00') {
-			strType = 'BMP(';
-			let bitCount = '';
-			const bytes = data.substr(14,4);
-			const b = bytes.charCodeAt(0);
-			if (bytes == '\x28\x00\x00\x00') {
-				strType += 'Win/';
-				bitCount = data.substr(28, 2);
-			} else if (bytes == '\x0c\x00\x00\x00') {
-				strType += '0S2/';
-				bitCount = data.substr(24, 2);
-			} else if (bytes.substr(1, 3) == '\x00\x00\x00'){ 
-				if (b == 52 || b == 56 || b == 60 || b == 96 || b == 108){
-					bitCount = data.substr(28, 2);
-					strType += 'V4/';
-				} else if(b == 112 || b == 120 || b == 124) {
-					bitCount = data.substr(28, 2);
-					strType += 'V5/';
-				}else{
-					strType += '不明';
-				}
-			}
-			if(bitCount == '\x18\x00') {
-				strType += '24bit';
-			}else if(bitCount == '\x20\x00') {
-				strType += '32bit';
-			}else if (bitCount == '\x08\x00') {
-				strType += '8bit';
-			}else if (bitCount == '\x04\x00') {
-				strType += '4bit';
-			}else if (bitCount == '\x01\x00') {
-				strType += '1bit';
-			}else if (bitCount == '\x00\x00') {
-				if (data.substr(30,4) == '\x04\x00\x00\x00'){
-					strType += 'JPEG';
-				}else if (data.substr(30,4) == '\x05\x00\x00\x00'){
-					strType += 'PNG';
-				}else{
-					strType += '0bit';
-				}
-			}else if(bitCount == ''){
-				// strType += 'bit数不明';
-			}else{
-				strType += '[' + (bitCount.charCodeAt(0) + bitCount.charCodeAt(1) * 256) + ']bit';
-			}
-			strType += ')';
-		}else{
-			strType = mime + '/' + '不明(hex:' + text + ')';
-		}
-		org.innerText = strType;
-
+		org.innerText = getImageTypeByDataURL(uploadImgSrc);
+		setUrlParameter();
 		canvasDraw();
 	}
 	reader.readAsDataURL(fileData);
+}
+
+function getImageTypeByDataURL(orgBase64) {
+	const index = orgBase64.indexOf(';base64,');
+	if (index == -1) {
+		return '';
+	}
+	const mime = orgBase64.substr(11, index - 11);
+	const data = atob(orgBase64.substr(index + 8));
+	let text = '';
+	for(let i = 0; i < 6 && i < data.length; i++) {
+		text += charHex(data, i);
+	}
+	let strType = '';
+	if (data.substr(0,8) == '\x89PNG\x0d\x0a\x1a\x0a') {
+		strType = 'PNG(';
+		const depth = data.charCodeAt(24);
+		const color = data.charCodeAt(25);
+		let rgba = 0;
+		if (color == 0) {
+			strType += 'グレイ';
+		}else if (color == 2) {
+			strType += 'カラー';
+			rgba = 3;
+		}else if (color == 3) {
+			strType += 'インデックス';
+		}else if (color == 4) {
+			strType += 'グレイアルファ';
+			rgba = 2;
+		}else if (color == 6) {
+			strType += 'カラーアルファ';
+			rgba = 4;
+		}else {
+			strType += '不明';
+		}
+		if (rgba) {
+			strType += depth + 'bit[' + (depth * rgba) + 'bit])';
+		}else{
+			strType += depth + 'bit)';
+		}
+	}else if (data.substr(0,2) == '\xff\xd8') {
+		strType = 'JPEG(';
+		const tag = data.substr(2,2);
+		var m = data.substr(6,5);
+		if (tag == '\xff\xe0' && m == 'JFIF\x00') {
+			strType += 'JFIF';
+		}else if ('\xff\xe1' && m == 'Exif\x00') {
+			strType += 'Exif';
+		}else if (tag.charCodeAt(0) == 0xff && 0xe0 <= tag.charCodeAt(1) && tag.charCodeAt(1) <= 0xef) {
+			strType += 'APP' + tag.charCodeAt(1);
+		}else{
+			strType += '不明';
+		}
+		let length = data.charCodeAt(4) * 256 + data.charCodeAt(5) + 4;
+		let next = data.substr(length, 2);
+		do {
+			if (data.charCodeAt(length) != 0xff) {
+				strType += '/不正値';
+				break;
+			}
+			const marker = next.charCodeAt(1);
+			// strType += '/' + charHex(next, 1);
+			if (marker == 0xdb) {
+			}else if (marker == 0xc0 || marker == 0xc2) {
+				const ctype = data.substr(length + 9, 1);
+				const mode = (marker == 0xc0 ? 'ベースライン' : 'プログレッシブ');
+				strType += '/' + mode;
+				if (ctype == '\x01') {
+					strType += '/グレイ';
+				}else if (ctype == '\x03') {
+					strType += '/カラー';
+				}else if (ctype == '\x04') {
+					strType += '/CMYK';
+				}else{
+					strType += '/['+ charHex(type, 0) + ']';
+				}
+				break;
+			}else if (0xc0 <= marker && marker <= 0xcf) {
+				if (marker == 0xc4) {
+					// DHT
+				}else if (marker == 0xc8) {
+					// JPG
+				}else{
+					strType += '/SOF' + marker;
+				}
+				break;
+			}else if (0xe0 <= marker && marker <= 0xef) {
+				// APP0 - APP15
+				if (marker == 0xe1) {
+					if (data.substr(length + 4,5) == 'Exif\x00') {
+						strType += '/Exif';
+					}
+				}
+			}else if (marker == 0xfe) {
+				// コメント
+			}else{
+				// strType += '/不明[ff' + charHex(next, 1) + ']';
+			}
+			length = data.charCodeAt(length + 2)* 256 + data.charCodeAt(length + 3) + length + 2;
+			next = data.substr(length, 2);
+		} while(length < data.length);
+		strType += ')';
+	}else if (data.substr(0,4) == 'RIFF') {
+		const format = data.substr(8,4);
+		const fourCC = data.substr(12,4);
+		if (format == 'WEBP') {
+			strType = 'WebP';
+			if (fourCC == 'VP8X') {
+				strType += '(VP8X)';
+			}else if (fourCC == 'VP8L') {
+				strType += '(ロスレス)';
+			}else if (fourCC == 'VP8 ') {
+				strType += '(不可逆圧縮)';
+			}else if (fourCC == 'ALPH') {
+				strType += '(アルファチャネル)';
+			}else{
+				strType += '(不明FourCC[' + fourCC + '])';
+			}
+		}else{
+			strType = '不明RIFF[' + format + '/' + fourCC + ']';
+		}
+	}else if (data.substr(0,3) == 'GIF') {
+		strType = 'GIF';
+	}else if (data.substr(0,2) == 'BM' && data.substr(6,4) == '\x00\x00\x00\x00') {
+		strType = 'BMP(';
+		let bitCount = '';
+		const bytes = data.substr(14,4);
+		const b = bytes.charCodeAt(0);
+		if (bytes == '\x28\x00\x00\x00') {
+			strType += 'Win/';
+			bitCount = data.substr(28, 2);
+		} else if (bytes == '\x0c\x00\x00\x00') {
+			strType += '0S2/';
+			bitCount = data.substr(24, 2);
+		} else if (bytes.substr(1, 3) == '\x00\x00\x00') { 
+			if (b == 52 || b == 56 || b == 60 || b == 96 || b == 108) {
+				bitCount = data.substr(28, 2);
+				strType += 'V4/';
+			} else if (b == 112 || b == 120 || b == 124) {
+				bitCount = data.substr(28, 2);
+				strType += 'V5/';
+			}else{
+				strType += '不明';
+			}
+		}
+		if (bitCount == '\x18\x00') {
+			strType += '24bit';
+		}else if (bitCount == '\x20\x00') {
+			strType += '32bit';
+		}else if (bitCount == '\x08\x00') {
+			strType += '8bit';
+		}else if (bitCount == '\x04\x00') {
+			strType += '4bit';
+		}else if (bitCount == '\x01\x00') {
+			strType += '1bit';
+		}else if (bitCount == '\x00\x00') {
+			if (data.substr(30,4) == '\x04\x00\x00\x00') {
+				strType += 'JPEG';
+			}else if (data.substr(30,4) == '\x05\x00\x00\x00') {
+				strType += 'PNG';
+			}else{
+				strType += '0bit';
+			}
+		}else if(bitCount == '') {
+			// strType += 'bit数不明';
+		}else{
+			strType += '[' + (bitCount.charCodeAt(0) + bitCount.charCodeAt(1) * 256) + ']bit';
+		}
+		strType += ')';
+	}else if (data.substr(4,8) == 'ftypavif') {
+		strType = 'AVIF';
+	}else{
+		strType = mime + '/' + '不明(hex:' + text + ')';
+	}
+	return strType;
 }
 
 function canvasDraw() {
@@ -321,8 +418,7 @@ function canvasDraw() {
 		return;
 	}
 	const img = new Image();
-	img.src = uploadImgSrc;
-	img.crossOrigin = "Anonymous";
+	img.crossOrigin = 'anonymous';
 	img.onload = function () {
 		const previewbr = document.getElementById('previewbr');
 		if (document.getElementById('previewmode').value == 'updown') {
@@ -348,15 +444,20 @@ function canvasDraw() {
 		canvasBig1= false;
 		canvasBig2 = false;
 
-		ctx3.clearRect(img, 0, 0, img.width, img.height);
+		ctx3.clearRect(0, 0, img.width, img.height);
 		ctx3.drawImage(img, 0, 0, img.width, img.height);
 		ctx2.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas2.width, canvas2.height);
-		effectDownBits();
+		const type = selectOutputType(fileNameOrg);
+		let quo = '';
+		if( type == 'jpeg' || type == 'webp' ){
+			quo = '/品質' + document.getElementById('outquality').value;
+		}
+		const effect = '(' + effectDownBits() + quo + ')';
+		document.getElementById('saveMode').innerText = effect;
 
 		const outImage = createDownData();
-		const type = selectOutputType(fileNameOrg);
 		saveType = type;
-		if (type == 'jpeg' || type == 'webp'){
+		if (type == 'jpeg' || type == 'webp' || type == 'avif'){
 			saveImg1 = new Image();
 			saveImg1.src = outImage;
 			saveImg1.onload = function () {
@@ -374,6 +475,33 @@ function canvasDraw() {
 		document.getElementById('saveFileSize').innerText = '(' + strSize + ')';
 		document.getElementById('imagesize').innerText = canvas3.width + ' x ' + canvas3.height;
 	}
+	img.onerror = handlerLoadError;
+	img.src = uploadImgSrc;
+}
+
+function handlerLoadError() {
+	loadError();
+}
+
+function loadError(str) {
+	canvas1.width = 10;
+	canvas1.height = 10;
+	canvas2.width = 10;
+	canvas2.height = 10;
+	canvas3.width = 10;
+	canvas3.height = 10;
+	ctx1.clearRect(0, 0, 10, 10);
+	ctx2.clearRect(0, 0, 10, 10);
+	ctx3.clearRect(0, 0, 10, 10);
+	if(str){
+		str = '/' + str;
+	}else{
+		str = '';
+	}
+	document.getElementById('saveMode').innerText = '(読み込みエラー' + str + ')';
+	document.getElementById('saveFileName').innerText = '　';
+	document.getElementById('saveFileSize').innerText = '　';
+	document.getElementById('imagesize').innerText = '　';
 }
 
 function buttonElanble() {
@@ -470,12 +598,10 @@ function effectDownBits() {
 	const modeText = ['不明', '最近傍法', '切り捨て', '切り上げ', '均等化', '切り下げ'];
 	let bitRGB = new Array(3);
 	if (888 == colorbit) {
-		document.getElementById('saveMode').innerText = '(減色なし)';
-		return;
+		return '減色なし';
 	}
 	if (mode <= 0 || modeMax < mode) {
-		document.getElementById('saveMode').innerText = '(減色なし)不明なmode';
-		return;
+		return '減色なし/不明なmode';
 	}
 	let errormode = false;
 	const colorList = ['r', 'g', 'b'];
@@ -498,9 +624,8 @@ function effectDownBits() {
 		}
 	}
 	if (errormode) {
-		document.getElementById('saveMode').innerText = '(減色なし)';
-		alert('Info:RGB ' + bitRGB[0] + '/' + bitRGB[1] + '/' + bitRGB[2]);
-		return;
+		return '減色なし/' +
+			'error:RGB[' + bitRGB[0] + '/' + bitRGB[1] + '/' + bitRGB[2] + ']';
 	}
 
 	let colorcount = new Array(3);
@@ -557,8 +682,7 @@ function effectDownBits() {
 		}
 	}
 	ctx3.putImageData(imageData, 0, 0);
-	document.getElementById('saveMode').innerText
-		= '(RGB' + bitRGB[0] + bitRGB[1] + bitRGB[2] + '/' + modeText[mode] + ')';
+	return 'RGB' + bitRGB[0] + bitRGB[1] + bitRGB[2] + '/' + modeText[mode] + '';
 }
 
 function createDownData() {
@@ -588,20 +712,13 @@ function clickDownLink() {
 	downLink.click();
 }
 
-function IsSuppertWebp() {
-	let cnv = document.createElement("canvas");
+function IsSuppertImage(type) {
+	let cnv = document.createElement('canvas');
 	cnv.width = 10;
 	cnv.height = 10;
-	let data = cnv.toDataURL("image/webp", 0.1);
-	return data.indexOf("image/webp") != -1;
-}
-
-function IsSuppertBmp() {
-	let cnv = document.createElement("canvas");
-	cnv.width = 10;
-	cnv.height = 10;
-	let data = cnv.toDataURL("image/bmp");
-	return data.indexOf("image/bmp") != -1;
+	const mime = 'image/' + type;
+	let data = cnv.toDataURL(mime, 0.1);
+	return data.indexOf(mime) != -1;
 }
 
 function isStringExtJpeg(ext) {
@@ -623,25 +740,26 @@ function selectOutputType(name) {
 		if (extLower == '.png') {
 			return 'png';
 		}
-		if (extLower == '.webp' && IsSuppertWebp()) {
+		if (extLower == '.webp' && IsSuppertImage('webp')) {
 			return 'webp';
 		}
-		if (extLower == '.bmp' && IsSuppertBmp()) {
+		if (extLower == '.bmp' && IsSuppertImage('bmp')) {
 			return 'bmp';
+		}
+		if (extLower == '.avif' && IsSuppertImage('avif')) {
+			return 'avif';
 		}
 		return 'png';
 	}
-	if (outtype == 'webp') {
-		if (IsSuppertWebp()) {
-			return 'webp';
+	const exts = ['webp', 'bmp', 'avif'];
+	for(let i = 0; i < exts.length; i++){
+		const ext = exts[i];
+		if (outtype == ext) {
+			if (IsSuppertImage(ext)) {
+				return ext;
+			}
+			return 'png';
 		}
-		return 'png';
-	}
-	if (outtype == 'bmp') {
-		if (IsSuppertBmp()) {
-			return 'bmp';
-		}
-		return 'png';
 	}
 	return outtype;
 }
@@ -659,28 +777,29 @@ function replaceFileName(name) {
 		const extLower = ext.toLowerCase();
 		if (isStringExtJpeg(extLower) ||
 			extLower == '.png' ||
-			(extLower == '.webp' && IsSuppertWebp()) ||
-			(extLower == '.bmp' && IsSuppertBmp())) {
+			(extLower == '.webp' && IsSuppertImage('wabp')) ||
+			(extLower == '.bmp' && IsSuppertImage('bmp')) ||
+			(extLower == '.avif' && IsSuppertImage('avif'))) {
 			if (outtype == 'auto') {
 				// not change
 			} else if (outtype == 'jpeg') {
 				if (!isStringExtJpeg(extLower)) {
 					ext = '.jpeg';
 				}
-			} else if (outtype == 'png') {
-				if (extLower != '.png') {
-					ext = '.png';
-				}
-			} else if (outtype == 'webp') {
-				if (extLower != '.webp') {
-					ext = '.webp';
-				}
-			} else if (outtype == 'bmp') {
-				if (extLower != '.bmp') {
-					ext = '.bmp';
-				}
 			} else {
-				ext = '.png';
+				const exts = ['png', 'webp', 'bmp', 'avif', 'xxx'];
+				for(let i = 0; i < exts.length; i++){
+					const ext = exts[i];
+					if (outtype == ext) {
+						if (extLower != '.' + ext) {
+							ext = '.' + ext;
+						}
+						break;
+					}
+					if (ext == 'xxx'){
+						ext = '.png';
+					}
+				}
 			}
 			return name.substr(0, dot) + suffix + ext;
 		}
@@ -706,11 +825,15 @@ function removeUnsupportType() {
 	const outtype = document.getElementById('outtype');
 	const typebmp = document.getElementById('typebmp');
 	const typewebp = document.getElementById('typewebp');
-	if (typebmp && !IsSuppertBmp()) {
+	const typeavif = document.getElementById('typeavif');
+	if (typebmp && !IsSuppertImage('bmp')) {
 		outtype.removeChild(typebmp);
 	}
-	if (typewebp && !IsSuppertWebp()) {
+	if (typewebp && !IsSuppertImage('webp')) {
 		outtype.removeChild(typewebp);
+	}
+	if (typeavif && !IsSuppertImage('avif')) {
+		outtype.removeChild(typeavif);
 	}
 }
 

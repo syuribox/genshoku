@@ -789,15 +789,16 @@ function replaceFileName(name) {
 			} else {
 				const exts = ['png', 'webp', 'bmp', 'avif', 'xxx'];
 				for(let i = 0; i < exts.length; i++){
-					const ext = exts[i];
-					if (outtype == ext) {
-						if (extLower != '.' + ext) {
-							ext = '.' + ext;
-						}
+					const ext2 = exts[i];
+					if (ext2 == 'xxx'){
+						ext = '.png';
 						break;
 					}
-					if (ext == 'xxx'){
-						ext = '.png';
+					if (outtype == ext2) {
+						if (extLower != '.' + ext2) {
+							ext = '.' + ext2;
+						}
+						break;
 					}
 				}
 			}

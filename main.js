@@ -435,10 +435,14 @@ function canvasDraw() {
 
 		originalImg = img;
 		const preSize = getPreviewSize(img.width, img.height);
-		canvas1.width = preSize.width;
-		canvas1.height = preSize.height;
-		canvas2.width = preSize.width;
-		canvas2.height = preSize.height;
+		canvas1.style.width = preSize.width + 'px';
+		canvas1.style.height = preSize.height + 'px';
+		canvas2.style.width = preSize.width + 'px';
+		canvas2.style.height = preSize.height + 'px';
+		canvas1.width = img.width;
+		canvas1.height = img.height;
+		canvas2.width = img.width;
+		canvas2.height = img.height;
 		canvas3.width = img.width;
 		canvas3.height = img.height;
 		canvasBig1= false;
@@ -490,6 +494,10 @@ function loadError(str) {
 	canvas2.height = 10;
 	canvas3.width = 10;
 	canvas3.height = 10;
+	canvas1.style.width = '10px';
+	canvas1.style.height = '10px';
+	canvas2.style.width = '10px';
+	canvas2.style.height = '10px';
 	ctx1.clearRect(0, 0, 10, 10);
 	ctx2.clearRect(0, 0, 10, 10);
 	ctx3.clearRect(0, 0, 10, 10);
@@ -541,6 +549,8 @@ function getPreviewSize(width, height){
 		retValue.width = w;
 		retValue.height = w * imageAspect;
 	}
+	retValue.width = parseInt(retValue.width);
+	retValue.height = parseInt(retValue.height);
 	return retValue;
 }
 
@@ -561,27 +571,16 @@ function clickButtonBig(e) {
 			canvasBig2 = false;
 		}
 		const preSize = getPreviewSize(canvas3.width, canvas3.height);
-		target.width = preSize.width;
-		target.height = preSize.height;
+		target.style.width = preSize.width + 'px';
+		target.style.height = preSize.height + 'px';
 	} else {
 		if (target.id == 'canvas1') {
 			canvasBig1 = true;
 		} else {
 			canvasBig2 = true;
 		}
-		const w = canvas3.width;
-		target.width = canvas3.width;
-		target.height = canvas3.height;
-	}
-
-	if (target.id == canvas1.id) {
-		if (saveType == 'jpeg' || saveType == 'webp'){
-			ctx1.drawImage(saveImg1, 0, 0, canvas3.width, canvas3.height, 0, 0, canvas1.width, canvas1.height);
-		}else{
-			ctx1.drawImage(canvas3, 0, 0, canvas3.width, canvas3.height, 0, 0, canvas1.width, canvas1.height);
-		}
-	} else {
-		ctx2.drawImage(originalImg, 0, 0, canvas3.width, canvas3.height, 0, 0, canvas2.width, canvas2.height);
+		target.style.width = parseInt(canvas3.width / window.devicePixelRatio) + 'px';
+		target.style.height = parseInt(canvas3.height / window.devicePixelRatio) + 'px';
 	}
 }
 
